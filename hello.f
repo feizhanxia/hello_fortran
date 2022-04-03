@@ -6,5 +6,3 @@
         WRITE (*,*) 'Result: a * b = ', k
         STOP
         END PROGRAM hello_fortran
-
-
