@@ -64,143 +64,160 @@ ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
         subroutine npbound()
 c      求解薛定谔方程确定np相互作用势的深度
 ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-            use mesh
-            use systems
-            use constants
-            implicit none
-            integer :: ir,i,irmid    ! 格点信息
-            real*8 :: mu,ecm         ! 折合质量， 与质心系能量
-            real*8 :: norm           ! 归一化系数
-            real*8 :: eta            ! 索末菲参数
-            integer :: IE            ! Whittaker function系数
-            real*8,dimension(0:0) :: WK,WKD
-            real*8 :: knp                                ! wave number 
-            real*8,dimension(0:irmatch) :: vpot,vpot1    ! np相互作用势
-            real*8,dimension(0:irmatch) ::  phi          ! np波函数
-            real*8 :: r 
-            real*8 :: V0             ! 初始势阱深度
-            real*8 :: gausspot       ! 高斯势函数
-            real*8 :: fpin,fpout
-            real*8 :: delta
-            real*8 :: n              ! 势阱深度的系数
-            real*8 :: const
-            real*8 :: fl             ! ratching point wave function
-            real*8 :: FFR4           ! interpolation function
-            real*8,dimension(0:irmatch) :: fin
-            real*8,dimension(1:irmatch) :: kl
-            real*8 :: f0,phivphi
-            integer :: l
+        use mesh
+        use systems
+        use constants
+        implicit none
+        integer :: ir,i,irmid    ! 格点信息
+        real*8 :: mu,ecm         ! 折合质量， 与质心系能量
+        real*8 :: norm           ! 归一化系数
+        real*8 :: eta            ! 索末菲参数
+        integer :: IE            ! Whittaker function系数
+        real*8,dimension(0:0) :: WK,WKD
+        real*8 :: knp                                ! wave number 
+        real*8,dimension(0:irmatch) :: vpot,vpot1    ! np相互作用势
+        real*8,dimension(0:irmatch) ::  phi          ! np波函数
+        real*8 :: r 
+        real*8 :: V0             ! 初始势阱深度
+        real*8 :: gausspot       ! 高斯势函数
+        real*8 :: fpin,fpout
+        real*8 :: delta
+        real*8 :: n              ! 势阱深度的系数
+        real*8 :: const
+        real*8 :: fl             ! ratching point wave function
+        real*8 :: FFR4           ! interpolation function
+        real*8,dimension(0:irmatch) :: fin
+        real*8,dimension(1:irmatch) :: kl
+        real*8 :: f0,phivphi
+        integer :: l
 
 
-            phi=0.0d0
-            vpot=0.0d0
+        phi=0.0d0
+        vpot=0.0d0
        
         ! 定义势能 
         ! 请给定给定任意初始势能深度，注意V0为负数
-            V0=  ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        V0= -70 ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         ! 请给定给定任意初始势能深度，注意V0为负数
        
-            do ir=0, irmatch
-                r=ir*hcm 
-                vpot1(ir) = gausspot(r,v0,0.0d0,1.484d0)  ! 注意此处没有加库伦力
-                write(8,*) r, vpot1(ir)
-            end do 
-       
-            call flush(8)
+        do ir=0, irmatch
+            r=ir*hcm 
+            vpot1(ir) = gausspot(r,v0,0.0d0,1.484d0)  ! 注意此处没有加库伦力
+            write(8,*) r, vpot1(ir)
+        end do 
+   
+        call flush(8)
        
         ! 计算索末菲参数
-            ecm=be
-            mu=amu*(mass2*mass1)/(mass1+mass2)
-            knp=sqrt(-2*mu*ecm/(hbarc**2))
-            eta=z2*z1*e2*mu/hbarc/hbarc/knp
+        ecm=be
+        mu=amu*(mass2*mass1)/(mass1+mass2)
+        knp=sqrt(-2*mu*ecm/(hbarc**2))
+        eta=z2*z1*e2*mu/hbarc/hbarc/knp
 
         ! 定义相遇点的位置
-            irmid=nint(2.0d0/hcm) ! arbitrary radius
+        irmid=nint(2.0d0/hcm) ! arbitrary radius
 
         ! 初始化delta的数值
-            delta=0.0d0
-            n=1
-            l=0 ! s-wave 
-       
-            do !寻找合适的势阱深度
-                n=n*(1+delta)
-                vpot(0:irmatch)=n * vpot1(0:irmatch)
-c****
-c       Numerov method to solve the differential radial equation
+        delta=0.0d0
+        n=1
+        l=0 ! s-wave 
+
+        do !寻找合适的势阱深度
+            n=n*(1+delta)
+            vpot(0:irmatch)=n * vpot1(0:irmatch)
+        !!
+        ! Numerov method to solve the differential radial equation
+        !!
         !! from zero
-                phi(0)=0      ! boundary condition
-                phi(1)=hcm    ! arbitrary value
+            phi(0)=0      ! boundary condition
+            phi(1)=hcm    ! arbitrary value
 
 cccccccccccccccccccccccccc请完善Numerov方法cccccccccccccccccccccccccccccc
-
+        ! 1.通过phi(x+h)的递推式即Numerov算法得到phi(irmid)
+        !!!!!!!!
+        ! ((-2*mu/(hbarc**2))*(vpot(ir)-ecm))
+            do ir=2, irmatch
+            phi(ir)=(2*(1-5*((-2*mu/(hbarc**2))*(vpot(ir-1)-ecm))/12)*phi(ir-1)
+            &   -(1+((-2*mu/(hbarc**2))*(vpot(ir-2)-ecm))/12)*phi(ir-2))
+            &   /(1+((-2*mu/(hbarc**2))*(vpot(ir)-ecm))/12)
+            end do 
       
-                fl=phi(irmid)
+            fl=phi(irmid)
         ! 求解phi(irmid) 点处的微分， 需要phi(irmid-2)， phi(irmid-1)， phi(irmid+1)， phi(irmid+2) 的数值
-                fpin=(-phi(irmid+2)+8.*phi(irmid+1)-8.*phi(irmid-1)
-                &                    +phi(irmid-2))/12./hcm
+            fpin=(-phi(irmid+2)+8.*phi(irmid+1)-8.*phi(irmid-1)
+            &                    +phi(irmid-2))/12./hcm
         ! 储存numerov的结果从0到irmid区间段
-                fin(0:irmid)=phi(0:irmid)
+            fin(0:irmid)=phi(0:irmid)
 
 
-
+        ! 2.通过phi(x+h)的递推式即Numerov算法得到phi(irmid)
+        !!!!!!!!!!
         !! from infinity
-                IE=0
-                call WHIT(eta,hcm*(irmatch),knp,ecm,l,WK,WKD,IE)
-                phi(irmatch)=WK(l)
+            IE=0
+            call WHIT(eta,hcm*(irmatch),knp,ecm,l,WK,WKD,IE)
+            phi(irmatch)=WK(l)
 
-                call WHIT(eta,hcm*(irmatch-1),knp,ecm,l,WK,WKD,IE)
-                phi(irmatch-1)=WK(l)
+            call WHIT(eta,hcm*(irmatch-1),knp,ecm,l,WK,WKD,IE)
+            phi(irmatch-1)=WK(l)
+
+
+            do ir=irmatch-2, 0, -1
+            phi(ir)=(2*(1-5*((-2*mu/(hbarc**2))*(vpot(ir+1)-ecm))/12)*phi(ir+1)
+            &   -(1+((-2*mu/(hbarc**2))*(vpot(ir+2)-ecm))/12)*phi(ir+2))
+            &   /(1+((-2*mu/(hbarc**2))*(vpot(ir)-ecm))/12)
+            end do 
 
 cccccccccccccccccccccccccc请完善Numerov方法cccccccccccccccccccccccccccccc
 
         
 
         ! 求解phi(irmid) 点处的微分， 需要phi(irmid-2)， phi(irmid-1)， phi(irmid+1)， phi(irmid+2) 的数值
-                fpout=(-phi(irmid+2)+8.*phi(irmid+1)-8.*phi(irmid-1)
-                &               +phi(irmid-2))/12./hcm
+            fpout=(-phi(irmid+2)+8.*phi(irmid+1)-8.*phi(irmid-1) &
+                    +phi(irmid-2))/12./hcm
 
         ! 计算0到irmid 与 irmid到无穷远 的系数
-                norm=phi(irmid)/fl
+            norm=phi(irmid)/fl
         
         ! 前半段波函数乘以上面的系数 
-                phi(0:irmid)=fin(0:irmid)*norm
-                fpin=fpin*norm
+            phi(0:irmid)=fin(0:irmid)*norm
+            fpin=fpin*norm
 
         ! 计算 \int phi(r) V(r) phi(r) dr 
-                phivphi=0.0d0
-                do i=1,nr
-                    f0=FFR4(rr(i)/hcm,vpot,irmatch+1)*
-                    &              abs(FFR4(rr(i)/hcm,phi(0:irmatch),irmatch+1))**2
-                    phivphi=phivphi+f0*rrw(i)
-                end do
+            phivphi=0.0d0
+            do i=1,nr
+                f0=FFR4(rr(i)/hcm,vpot,irmatch+1)*
+                & abs(FFR4(rr(i)/hcm,phi(0:irmatch),irmatch+1))**2
+                phivphi=phivphi+f0*rrw(i)
+            end do
         
         ! 计算\delta的数值
-                delta=real(phi(irmid)*(fpout-fpin)/phivphi)
+            delta=real(phi(irmid)*(fpout-fpin)/phivphi)
 
         ! 当\delta的数值足够小的时候我们可以认为该势能支持束缚态的存在
-                if (abs(delta)<1e-6) exit
-            end do ! for potential
+            if (abs(delta)<1e-6) exit
+        end do ! for potential
 
 
 
         ! 归一化波函数
 
-            norm=0.0d0
-            do i=1,nr
-                norm=norm+abs(FFR4(rr(i)/hcm,phi(0:irmatch),irmatch+1))**2*rrw(i)
-            end do
-            norm=1.0d0/norm
-            phi=phi*sqrt(norm)
+        norm=0.0d0
+        do i=1,nr
+            norm=norm+abs(FFR4(rr(i)/hcm,phi(0:irmatch),irmatch+1))
+            & **2*rrw(i)
+        end do
+        norm=1.0d0/norm
+        phi=phi*sqrt(norm)
 
-            write(*,99)V0,n*V0,n
-        99  format(2x,"Adjust potential depth from ",F8.3," to ",F8.3,
-        +                   " with scaling factor " F7.3)
+        write(*,99)V0,n*V0,n
+    99  format(2x,"Adjust potential depth from ",F8.3," to ",F8.3,
+        +   " with scaling factor " F7.3)
 
         !输出波函数
-            do ir=0,irmatch
-                write (7,*) hcm*ir, phi(ir)
-            end do
-            write(7,*)"&"
+        do ir=0,irmatch
+            write (7,*) hcm*ir, phi(ir)
+        end do
+        write(7,*)"&"
 
         end subroutine npbound
 c-----------------------------------------------------------------------
@@ -309,7 +326,7 @@ C           FD(LL+1) : derivative WHITTAKER  FUNCTION
 !	use drier !  AMoro
         IMPLICIT REAL*8 (A-H,O-Z)
         DIMENSION F(LL+1),FD(LL+1) ,T(12),S(7)
-!! AMoro: to replace drier module
+!!  AMoro: to replace drier module
         REAL*8 FPMAX
 !	acc8 = epsilon(acc8);
         fpmax = huge(acc8)**0.8d0 
